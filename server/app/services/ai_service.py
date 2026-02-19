@@ -3,14 +3,18 @@ import logging
 import os
 import json
 import time
+import tempfile
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
+from fastapi import UploadFile
 from google import genai
 from google.cloud import vision
 from google.genai import types
-from app.config import setting 
+
+from app.models.output_schema import SingleInvoiceExtraction
+from app.routers.prompts import INVOICE_EXTRACTION_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +35,6 @@ class AIService:
 
         self.vision_client = vision.ImageAnnotatorClient()
         
-        self.uploaded_files = []
 
 
     async def _extract_text_with_vision(self, image_paths: List[str]) -> Dict[str, str]:
@@ -103,7 +106,7 @@ class AIService:
 
         uploaded_files = [r for r in results if r is not None]
         file_names_to_delete = [f.name for f in uploaded_files]
-        self.uploaded_files = uploaded_files
+
 
         try:
             # 2️⃣ Prepare contents
@@ -223,3 +226,8 @@ class AIService:
         if hasattr(response.parsed, "model_dump"):
             return response.parsed.model_dump(mode="json")
         return response.parsed
+
+
+
+
+
