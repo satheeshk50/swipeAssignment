@@ -71,7 +71,8 @@ export async function extractFromFiles(files: File[]): Promise<APISingleInvoiceE
         throw new Error(`Extraction failed (${response.status}): ${errText}`);
     }
 
-    const data: APISingleInvoiceExtraction[] = await response.json();
+    const json = await response.json();
+    const data: APISingleInvoiceExtraction[] = json.data;
     return data;
 }
 
@@ -114,7 +115,7 @@ export function normalizeExtractedData(rawDataList: APISingleInvoiceExtraction[]
             });
         }
 
-        // 2. Process Products & Invoices (Line Items)
+        // 2. Process Products
         if (extractedProducts && extractedProducts.length > 0) {
             extractedProducts.forEach((prod) => {
                 const productName = prod.name?.trim() || 'Unknown Product';
@@ -129,11 +130,11 @@ export function normalizeExtractedData(rawDataList: APISingleInvoiceExtraction[]
                     if (prod.unit_price === null) warnings.push({ field: 'unitPrice', message: 'Missing unit price' });
                     if (prod.quantity === null) warnings.push({ field: 'quantity', message: 'Missing quantity' });
 
-                    // Parse tax string if needed (e.g. "18%")
+                    // Parse tax string if needed (e.g. "(18%)" or "₹8,115.25 (18%)" or "18%")
                     let taxVal: number | null = null;
                     if (prod.tax) {
-                        const match = prod.tax.match(/(\d+(\.\d+)?)/);
-                        if (match) taxVal = parseFloat(match[0]);
+                        const match = prod.tax.match(/(\d+(?:\.\d+)?)\s*%/);
+                        if (match) taxVal = parseFloat(match[1]);
                     }
 
                     if (taxVal === null) warnings.push({ field: 'tax', message: 'Missing tax' });
@@ -148,37 +149,46 @@ export function normalizeExtractedData(rawDataList: APISingleInvoiceExtraction[]
                         warnings,
                     });
                 }
-
-                // Create Invoice Line Item
-                const invId = uuidv4();
-                const warnings: CellWarning[] = [];
-
-                if (prod.quantity === null) warnings.push({ field: 'qty', message: 'Missing qty' });
-                if (prod.price_with_tax === null) warnings.push({ field: 'totalAmount', message: 'Missing total amount' });
-                if (!invoice_details.date) warnings.push({ field: 'date', message: 'Missing date' });
-
-                // Tax parsing for invoice line item
-                let lineTax: number | null = null;
-                if (prod.tax) {
-                    const match = prod.tax.match(/(\d+(\.\d+)?)/);
-                    if (match) lineTax = parseFloat(match[0]);
-                }
-
-                invoices.push({
-                    id: invId,
-                    serialNumber: invoice_details.serial_number || `INV-${invId.slice(0, 4).toUpperCase()}`,
-                    customerName: customerName,
-                    productName: productName,
-                    qty: prod.quantity ?? null,
-                    tax: lineTax, // Using product tax as line tax
-                    totalAmount: prod.price_with_tax ?? null, // Using product total as line total
-                    date: invoice_details.date || '',
-                    customerId: customerId!,
-                    productId: productId!,
-                    warnings,
-                });
             });
         }
+
+        // 3. Create Invoice (Aggregated)
+        const invId = uuidv4();
+        const invWarnings: CellWarning[] = [];
+
+        if (invoice_details.total_quantity === null) invWarnings.push({ field: 'qty', message: 'Missing total qty' });
+        if (invoice_details.total_amount === null) invWarnings.push({ field: 'totalAmount', message: 'Missing total amount' });
+        if (!invoice_details.date) invWarnings.push({ field: 'date', message: 'Missing date' });
+
+        const combinedProductNames = extractedProducts && extractedProducts.length > 0
+            ? extractedProducts.map((p) => p.name?.trim() || 'Unknown Product').join(', ')
+            : 'No Products';
+
+        // Map all product UUIDs for this invoice to correctly recalculate later
+        const invoiceProductIds: string[] = [];
+        if (extractedProducts && extractedProducts.length > 0) {
+            extractedProducts.forEach((p) => {
+                const pn = p.name?.trim() || 'Unknown Product';
+                const pId = productMap.get(pn.toLowerCase());
+                if (pId) {
+                    invoiceProductIds.push(pId);
+                }
+            });
+        }
+
+        invoices.push({
+            id: invId,
+            serialNumber: invoice_details.serial_number || `INV-${invId.slice(0, 4).toUpperCase()}`,
+            customerName: customerName,
+            productName: combinedProductNames,
+            qty: invoice_details.total_quantity ?? null,
+            tax: invoice_details.total_tax_amount ?? null, // Using the total tax amount from metadata
+            totalAmount: invoice_details.total_amount ?? null, // Using the total amount from metadata
+            date: invoice_details.date || '',
+            customerId: customerId,
+            productIds: invoiceProductIds,
+            warnings: invWarnings,
+        });
     });
 
     return { invoices, products, customers };

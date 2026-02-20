@@ -15,7 +15,7 @@ export interface Invoice {
   totalAmount: number | null;
   date: string;
   customerId: string;
-  productId: string;
+  productIds: string[]; // <-- track which products belong to this invoice
   warnings: CellWarning[];
 }
 
@@ -41,7 +41,7 @@ export interface Customer {
 
 // ─── AI Extraction Response ───
 export interface ExtractedData {
-  invoices: Omit<Invoice, 'id' | 'warnings' | 'customerId' | 'productId'>[];
-  products: Omit<Product, 'id' | 'warnings'>[];
-  customers: Omit<Customer, 'id' | 'warnings'>[];
+  invoices: Invoice[];
+  products: Product[];
+  customers: Customer[];
 }

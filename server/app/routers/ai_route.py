@@ -1,12 +1,13 @@
 import logging
 from typing import Dict, Any, List
-
+import asyncio
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.services.ai_service import AIService
 from app.models.output_schema import SingleInvoiceExtraction
 from app.routers.prompts import INVOICE_EXTRACTION_PROMPT
 from datetime import datetime
 from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +54,57 @@ async def process_invoice_with_ai(files: List[UploadFile]) -> List[Dict[str, Any
         logger.info(f"Starting sequential processing for {len(saved_file_paths)} files...")
 
         for file_path in saved_file_paths:
+
             try:
+                print("\n🔍 Step 1: Extracting raw text using Google Vision API...")
+                vision_result = (await _ai_service._extract_text_with_vision(
+                    image_paths=[file_path] or "")
+                )
+                if vision_result:
+                    print(f"✅ Vision extraction successful! Text length: {len(vision_result)} chars.")
+                else:
+                    print("⚠️ Vision extraction returned no text.")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to process file with vision: {e}")
+                results.append({"error": str(e), "file": Path(file_path).name})
+                continue # Skip remaining if vision crashes
+                
+            try:
+                dynamic_prompt = INVOICE_EXTRACTION_PROMPT
+                if vision_result:
+                    dynamic_prompt += f"""
+
+                    <input_data>
+                    [INSERT EXCEL/PDF/IMAGE TEXT OR FILE PAYLOAD HERE]
+
+                    The following text was extracted using Google Cloud Vision.
+                    If there are any differences between your own extraction and this text,
+                    prioritize the Vision-extracted data for better accuracy.
+
+                    Vision Extracted Text:
+                    \"\"\"{vision_result}\"\"\"
+                    </input_data>
+
+                    """
+                else:
+                    dynamic_prompt += """
+
+                    <input_data>
+                    [INSERT EXCEL/PDF/IMAGE TEXT OR FILE PAYLOAD HERE]
+                    </input_data>
+
+                    """
+                    
+                print("🤖 Step 2: Generating structured JSON using Gemini LLM...")
                 result = await _ai_service.generate(
-                    system_prompt=INVOICE_EXTRACTION_PROMPT,
+                    system_prompt=dynamic_prompt,
                     image_paths=[file_path],
                     response_schema=SingleInvoiceExtraction,
                 )
+                print("✅ Gemini generation successful!")
 
+                print("🛠️ Step 3: Parsing and formatting output...")
                 if hasattr(result, "model_dump"):
                     data = result.model_dump(mode="json")
                 elif isinstance(result, dict):
@@ -68,16 +113,18 @@ async def process_invoice_with_ai(files: List[UploadFile]) -> List[Dict[str, Any
                     data = dict(result)
 
                 results.append(data)
+                print("🎉 Successfully processed and appended to batch results!\n")
 
             except Exception as e:
-                logger.error(f"Failed to process file {file_path}: {e}")
+                logger.error(f"❌ Failed during LLM generation or parsing: {e}")
                 results.append({"error": str(e), "file": Path(file_path).name})
 
+        print(f"🏁 Finished processing all {len(saved_file_paths)} files. Returning results to client.")
         return results
 
     except Exception as e:
         logger.error(f"Batch processing error: {e}")
-        raise
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -92,7 +139,7 @@ async def process_invoice(files: List[UploadFile] = File(...)):
     try:
         # returns List[Dict[str, Any]] or List[SingleInvoiceExtraction] (as dicts)
         invoice_data = await process_invoice_with_ai(files)
-        return invoice_data
+        return {"message":"Invoice processed successfully", "data":invoice_data,"status_code":200}
     except Exception as e:
         logger.error(f"Error processing invoice: {e}")
         raise HTTPException(status_code=500, detail=str(e))

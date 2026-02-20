@@ -35,16 +35,6 @@ const invoicesSlice = createSlice({
                 }
             });
         },
-        syncProductName(
-            state,
-            action: PayloadAction<{ productId: string; newName: string }>
-        ) {
-            state.items.forEach((inv) => {
-                if (inv.productId === action.payload.productId) {
-                    inv.productName = action.payload.newName;
-                }
-            });
-        },
         addWarningToInvoice(
             state,
             action: PayloadAction<{ id: string; warning: CellWarning }>
@@ -64,7 +54,6 @@ export const {
     addInvoices,
     updateInvoice,
     syncCustomerName,
-    syncProductName,
     addWarningToInvoice,
     clearInvoices,
 } = invoicesSlice.actions;

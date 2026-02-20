@@ -14,7 +14,9 @@ from google.cloud import vision
 from google.genai import types
 
 from app.models.output_schema import SingleInvoiceExtraction
-from app.routers.prompts import INVOICE_EXTRACTION_PROMPT
+# from app.routers.prompts import INVOICE_EXTRACTION_PROMPT
+from dotenv import load_dotenv
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class AIService:
         
         self.client = genai.Client(api_key=api_key)
         
-        self.model_name = "gemini-3-pro-preview" 
+        self.model_name = "gemini-2.5-pro" 
 
 
         self.vision_client = vision.ImageAnnotatorClient()
@@ -133,7 +135,7 @@ class AIService:
             return response.parsed
 
         except Exception as e:
-            logger.warning(f"Primary model failed: {e}")
+            logger.warning(f"OCR model failed: {e}")
             raise
 
         finally:
@@ -156,78 +158,4 @@ class AIService:
 
         await asyncio.gather(*(delete_one(name) for name in file_names))
 
-    async def process_documents(
-        self,
-        image_paths: List[str],
-        system_prompt_template: str,
-        response_schema: Any,
-        existing_summary: Dict[str, Any] = None,
-        patient_id: str = None
-    ) -> Dict[str, Any]:
-        """
-        Orchestrator method: OCR -> Upload -> Generate
-        Matches the previous `process_documents` signature for compatibility with routes.
-        """
-
-        # 1. OCR
-        logger.info(f"Starting OCR for {len(image_paths)} images...")
-        ocr_start = time.time()
-        ocr_text = await self._extract_text_with_vision(image_paths)
-        ocr_end = time.time()
-        logger.info(f"OCR completed in {ocr_end - ocr_start:.2f}s")
-        
-
-        formatted_ocr = json.dumps(ocr_text, indent=2)
-        print(f"OCR Text is : \n")
-        print(formatted_ocr)
-
-        full_prompt = f"""
-        {system_prompt_template}
-
-        ### EXTRACTED OCR TEXT (Google Cloud Vision):
-        {formatted_ocr}
-        """
-
-        # 3. Generate (Uploads handled inside generate)
-        result = await self.generate(
-            system_prompt=full_prompt,
-            image_paths=image_paths, 
-            response_schema=response_schema
-        )
-        
-        # Handle Pydantic/Dict conversion
-        if hasattr(result, "model_dump"):
-            return result.model_dump(mode="json")
-        elif isinstance(result, dict):
-            return result
-        else:
-             try:
-                 return dict(result)
-             except:
-                 return result
-
-    async def generate_text_only(self, system_prompt: str, response_schema: Any) -> Dict[str, Any]:
-        """Helper for text-only generation (e.g. final summaries)"""
-        
-        def inner_generate():
-            return self.client.models.generate_content(
-                model=self.model_name_primary,
-                contents=[system_prompt],
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": response_schema,
-                    "temperature": 0.4,
-                }
-            )
-
-        # Run blocking call in thread
-        response = await asyncio.to_thread(inner_generate)
-        
-        if hasattr(response.parsed, "model_dump"):
-            return response.parsed.model_dump(mode="json")
-        return response.parsed
-
-
-
-
-
+    
