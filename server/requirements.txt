@@ -5,3 +5,6 @@ google-genai
 google-cloud-vision
 pydantic
 python-dotenv
+azure-core
+azure-ai-documentintelligence
+pandas

@@ -14,7 +14,17 @@ const invoicesSlice = createSlice({
     initialState,
     reducers: {
         addInvoices(state, action: PayloadAction<Invoice[]>) {
-            state.items.push(...action.payload);
+            action.payload.forEach((newInv) => {
+                const existing = state.items.find(
+                    (i) => i.serialNumber.toLowerCase() === newInv.serialNumber.toLowerCase()
+                );
+                if (!existing) {
+                    state.items.push(newInv);
+                } else {
+                    // Update the existing invoice with new data (merge)
+                    Object.assign(existing, newInv);
+                }
+            });
         },
         updateInvoice(
             state,
