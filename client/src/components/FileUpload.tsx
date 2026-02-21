@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
-import { Upload, FileText, Loader2, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle2, Zap } from 'lucide-react';
 import {
     isValidFileType,
     extractFromFiles,
@@ -17,6 +17,7 @@ const FileUpload = () => {
     const dispatch = useAppDispatch();
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+    const [fastMode, setFastMode] = useState(false);
 
     const onDrop = useCallback(
         async (acceptedFiles: File[]) => {
@@ -43,7 +44,7 @@ const FileUpload = () => {
                 });
 
                 // 2. Send batch request
-                const rawData = await extractFromFiles(validFiles);
+                const rawData = await extractFromFiles(validFiles, fastMode);
                 const normalized = normalizeExtractedData(rawData);
 
                 // 3. Update Store
@@ -75,7 +76,7 @@ const FileUpload = () => {
                 setIsProcessing(false);
             }
         },
-        [dispatch]
+        [dispatch, fastMode]
     );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -87,6 +88,34 @@ const FileUpload = () => {
 
     return (
         <div className="file-upload-section">
+            <div className="fast-mode-toggle" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <Zap size={18} color={fastMode ? '#eab308' : '#64748b'} />
+                <span style={{ fontWeight: 500, color: fastMode ? '#eab308' : '#64748b' }}>Fast Mode</span>
+                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
+                    <input
+                        type="checkbox"
+                        checked={fastMode}
+                        onChange={(e) => setFastMode(e.target.checked)}
+                        disabled={isProcessing}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span
+                        className="slider round"
+                        style={{
+                            position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: fastMode ? '#eab308' : '#ccc', transition: '.4s', borderRadius: '34px'
+                        }}
+                    >
+                        <span
+                            style={{
+                                position: 'absolute', content: '""', height: '16px', width: '16px', left: '2px', bottom: '2px',
+                                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                                transform: fastMode ? 'translateX(20px)' : 'none'
+                            }}
+                        />
+                    </span>
+                </label>
+            </div>
             <div
                 {...getRootProps()}
                 className={`dropzone ${isDragActive ? 'dropzone--active' : ''} ${isProcessing ? 'dropzone--disabled' : ''

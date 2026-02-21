@@ -55,11 +55,14 @@ interface APISingleInvoiceExtraction {
  * Send files to the backend AI extraction endpoint.
  * Returns the raw extracted data as a list of invoice objects.
  */
-export async function extractFromFiles(files: File[]): Promise<APISingleInvoiceExtraction[]> {
+export async function extractFromFiles(files: File[], fastMode: boolean = false): Promise<APISingleInvoiceExtraction[]> {
     const formData = new FormData();
     files.forEach((file) => {
         formData.append('files', file);
     });
+    // Explicitly send the boolean value. FormData always casts to string, 
+    // but sending "true" or "false" is standard for FastAPI `bool` Form parsing.
+    formData.append('fast_mode', fastMode.toString());
 
     const response = await fetch(`${API_BASE_URL}/api/ai/extract`, {
         method: 'POST',
