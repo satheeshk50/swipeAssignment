@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 import pandas as pd
 import json
@@ -20,7 +19,6 @@ from app.models.output_schema import SingleInvoiceExtraction
 from dotenv import load_dotenv
 load_dotenv()
 
-logger = logging.getLogger(__name__)
 endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
 key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
 
@@ -32,7 +30,7 @@ class AIService:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-             logger.warning("GEMINI_API_KEY not found in environment variables.")
+             print("GEMINI_API_KEY not found in environment variables.")
         
         self.genai_client = genai.Client(api_key=api_key)
         
@@ -54,7 +52,7 @@ class AIService:
         if not image_path or image_path == "":
             return ""
         
-        logger.info(f"Extracting text from {image_path} with Azure Intelligence")
+        print(f"Extracting text from {image_path} with Azure Intelligence")
         extracted_text_dict = {}
 
         file_ext = Path(image_path).suffix.lower()
@@ -81,7 +79,7 @@ class AIService:
         Upload files and call Gemini with text + images.
         """
 
-        logger.info(f"Uploading {image_path} document to Gemini...")
+        print(f"Uploading {image_path} document to Gemini...")
 
         # 1️⃣ Upload files concurrently (non-blocking)
         async def upload_one(path: str):
@@ -96,19 +94,17 @@ class AIService:
             temp_txt_path = None
             if file_ext in ['.xlsx', '.xls']:
                 try:
-                    logger.info(f"Converting Excel file {path} to text for Gemini...")
+                    print(f"🔄 Converting Excel file {path} to text for Gemini...")
                     df = await asyncio.to_thread(pd.read_excel, path)
                     
-                    # Create a temporary file to hold the CSV text, suffix .txt bypasses Windows mime errors
-                    temp_txt = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-                    temp_txt_path = temp_txt.name
-                    temp_txt.close()
+                    # Store in the same folder with .txt extension
+                    temp_txt_path = str(Path(path).with_suffix(".txt"))
                     
-                    # Write CSV
+                    # Write CSV 
                     await asyncio.to_thread(df.to_csv, temp_txt_path, index=False)
                     upload_path = temp_txt_path
                 except Exception as e:
-                    logger.error(f"Failed to convert Excel to text: {e}")
+                    print(f"Failed to convert Excel to text: {e}")
                     # Fallback to uploading raw excel if conversion fails
                     upload_path = path
 
@@ -117,16 +113,10 @@ class AIService:
                     self.genai_client.files.upload,
                     file=upload_path
                 )
-                
-                # Cleanup the temp TXT if we created one
-                if temp_txt_path and os.path.exists(temp_txt_path):
-                    os.remove(temp_txt_path)
                     
                 return uploaded
             except Exception as e:
-                logger.error(f"Upload failed for {upload_path}: {e}")
-                if temp_txt_path and os.path.exists(temp_txt_path):
-                    os.remove(temp_txt_path)
+                print(f"Upload failed for {upload_path}: {e}")
                 return None
 
         uploaded_file = await upload_one(image_path)
@@ -139,7 +129,7 @@ class AIService:
             # 2️⃣ Prepare contents
             contents = [system_prompt, *uploaded_files]
 
-            logger.info(f"Calling Gemini model {self.model_name}")
+            print(f"Calling Gemini model {self.model_name}")
 
             # 3️⃣ Run blocking model call inside thread + timeout
             response = await asyncio.wait_for(
@@ -160,7 +150,7 @@ class AIService:
             return response.parsed
 
         except Exception as e:
-            logger.warning(f"OCR model failed: {e}")
+            print(f"OCR model failed: {e}")
             raise
 
         finally:
@@ -172,15 +162,56 @@ class AIService:
         """
         Deletes files from Google Cloud storage using their resource names.
         """
-        logger.info(f"Cleaning up {len(file_names)} files from Gemini servers...")
+        print(f"Cleaning up {len(file_names)} files from Gemini servers...")
         
         async def delete_one(file_name):
             try:
                 await asyncio.to_thread(self.genai_client.files.delete, name=file_name)
-                logger.debug(f"Successfully deleted: {file_name}")
+                print(f"Successfully deleted: {file_name}")
             except Exception as e:
-                logger.error(f"Failed to delete file {file_name}: {e}")
+                print(f"Failed to delete file {file_name}: {e}")
 
         await asyncio.gather(*(delete_one(name) for name in file_names))
 
-    
+    async def map_excel_headings(self, headings: List[str]) -> Dict[str, Any]:
+        """
+        Uses Gemini strictly to map raw Excel column headings to standardized keys.
+        """
+        from app.models.output_schema import ExcelHeaderMapping
+        prompt = f"""
+        You are an expert data mapping assistant. You are given a list of column headings from an Excel file:
+        {headings}
+        
+        Your task is to map these exact headings to the following standardized fields:
+        - customer_name - means name of the customer
+        - phone_number - means phone number of the customer
+        - invoice_date - means date of the invoice
+        - total_amount - means total amount of the invoice
+        - quantity - means quantity of the product
+        - unit_price  - means price per unit with out tax
+        - product_name - means name of the product
+        - serial_number - means serial number of the product
+        - tax - Exact Excel column name for the tax percentage or amount
+        
+        Return a JSON object where the keys are the standardized fields, and the values are the EXACT matching string from the provided headings list. If there is no logical match for a field, leave it null.
+        """
+        
+        print("🤖 Asking Gemini to map Excel headings...")
+        try:
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.genai_client.models.generate_content,
+                    model=self.model_name,
+                    contents=[prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=ExcelHeaderMapping,
+                        temperature=0.1,
+                    )
+                ),
+                timeout=60.0
+            )
+            return response.parsed
+        except Exception as e:
+            print(f"Failed to map excel headings: {e}")
+            raise

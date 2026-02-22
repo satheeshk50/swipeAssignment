@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { updateInvoice } from '../store/invoicesSlice';
 import type { Invoice } from '../types';
+import ProductDetailsModal from './ProductDetailsModal';
 
 const InvoicesTable = () => {
     const invoices = useAppSelector((s) => s.invoices.items);
@@ -12,6 +13,7 @@ const InvoicesTable = () => {
         field: string;
     } | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [selectedInvoiceForProducts, setSelectedInvoiceForProducts] = useState<string | null>(null);
 
     const startEdit = (invoice: Invoice, field: keyof Invoice) => {
         const val = invoice[field];
@@ -52,7 +54,7 @@ const InvoicesTable = () => {
             .join('; ');
 
     const formatCurrency = (val: number | null) =>
-        val !== null ? `$${val.toFixed(2)}` : '—';
+        val !== null ? `₹${val.toFixed(2)}` : '—';
 
     if (invoices.length === 0) {
         return (
@@ -77,10 +79,19 @@ const InvoicesTable = () => {
         return (
             <td
                 className={`table__cell ${warned ? 'table__cell--warning' : ''}`}
-                onClick={() => !isEditing && startEdit(invoice, field)}
+                onClick={() => {
+                    const disabledFields = ['qty', 'tax', 'totalAmount'];
+
+                    if (field === 'productName') {
+                        setSelectedInvoiceForProducts(invoice.id);
+                    } else if (!isEditing && !disabledFields.includes(field)) {
+                        startEdit(invoice, field);
+                    }
+                }}
                 title={warned ? getWarningMessage(invoice, field) : undefined}
+                style={field === 'productName' ? { color: 'var(--accent-primary)', textDecoration: 'underline' } : {}}
             >
-                {isEditing ? (
+                {isEditing && field !== 'productName' ? (
                     <input
                         className="table__input"
                         value={editValue}
@@ -127,6 +138,13 @@ const InvoicesTable = () => {
                     ))}
                 </tbody>
             </table>
+
+            {selectedInvoiceForProducts && (
+                <ProductDetailsModal
+                    invoiceId={selectedInvoiceForProducts}
+                    onClose={() => setSelectedInvoiceForProducts(null)}
+                />
+            )}
         </div>
     );
 };

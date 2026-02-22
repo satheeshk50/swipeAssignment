@@ -51,7 +51,7 @@ const ProductsTable = () => {
             .join('; ');
 
     const formatCurrency = (val: number | null) =>
-        val !== null ? `$${val.toFixed(2)}` : '—';
+        val !== null ? `₹${val.toFixed(2)}` : '—';
 
     const formatPercent = (val: number | null) =>
         val !== null ? `${val}%` : '—';
