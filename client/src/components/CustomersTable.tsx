@@ -51,7 +51,7 @@ const CustomersTable = () => {
             .join('; ');
 
     const formatCurrency = (val: number | null) =>
-        val !== null ? `$${val.toFixed(2)}` : '—';
+        val !== null ? `₹${val.toFixed(2)}` : '—';
 
     if (customers.length === 0) {
         return (

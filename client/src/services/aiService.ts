@@ -75,7 +75,18 @@ export async function extractFromFiles(files: File[], fastMode: boolean = false)
     }
 
     const json = await response.json();
-    const data: APISingleInvoiceExtraction[] = json.data;
+
+    // The backend might return an array directly or an object with a data property.
+    const rawItems = Array.isArray(json) ? json : (json.data || []);
+
+    // Check if the backend returned any explicit errors in the array
+    rawItems.forEach((item: any) => {
+        if (item && item.error) {
+            throw new Error(item.error);
+        }
+    });
+
+    const data: APISingleInvoiceExtraction[] = rawItems;
     return data;
 }
 

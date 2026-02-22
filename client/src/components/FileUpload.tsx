@@ -88,33 +88,38 @@ const FileUpload = () => {
 
     return (
         <div className="file-upload-section">
-            <div className="fast-mode-toggle" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                <Zap size={18} color={fastMode ? '#eab308' : '#64748b'} />
-                <span style={{ fontWeight: 500, color: fastMode ? '#eab308' : '#64748b' }}>Fast Mode</span>
-                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
-                    <input
-                        type="checkbox"
-                        checked={fastMode}
-                        onChange={(e) => setFastMode(e.target.checked)}
-                        disabled={isProcessing}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span
-                        className="slider round"
-                        style={{
-                            position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                            backgroundColor: fastMode ? '#eab308' : '#ccc', transition: '.4s', borderRadius: '34px'
-                        }}
-                    >
-                        <span
-                            style={{
-                                position: 'absolute', content: '""', height: '16px', width: '16px', left: '2px', bottom: '2px',
-                                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
-                                transform: fastMode ? 'translateX(20px)' : 'none'
-                            }}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: '1rem' }}>
+                <div className="fast-mode-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Zap size={18} color={fastMode ? '#eab308' : '#64748b'} />
+                    <span style={{ fontWeight: 500, color: fastMode ? '#eab308' : '#64748b' }}>Fast Mode</span>
+                    <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
+                        <input
+                            type="checkbox"
+                            checked={fastMode}
+                            onChange={(e) => setFastMode(e.target.checked)}
+                            disabled={isProcessing}
+                            style={{ opacity: 0, width: 0, height: 0 }}
                         />
-                    </span>
-                </label>
+                        <span
+                            className="slider round"
+                            style={{
+                                position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: fastMode ? '#eab308' : '#ccc', transition: '.4s', borderRadius: '34px'
+                            }}
+                        >
+                            <span
+                                style={{
+                                    position: 'absolute', content: '""', height: '16px', width: '16px', left: '2px', bottom: '2px',
+                                    backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                                    transform: fastMode ? 'translateX(20px)' : 'none'
+                                }}
+                            />
+                        </span>
+                    </label>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                    If it is enabled you may get some incorrect data as this is fast extraction (for PDF's and Images only not Excel)
+                </span>
             </div>
             <div
                 {...getRootProps()}

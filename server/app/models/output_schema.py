@@ -23,8 +23,24 @@ class InvoiceMetadata(BaseModel):
     total_amount: Optional[float] = Field(default=None, description="The final total amount payable on the invoice")
     date: Optional[str] = Field(default=None, description="The date the invoice was issued")
 
-# 4. Root Extraction Schema (Strictly ONE invoice at a time)
+# 4. Standard Single Invoice Object
 class SingleInvoiceExtraction(BaseModel):
     invoice_details: InvoiceMetadata = Field(description="The core metadata and totals for this specific invoice")
     customer: Customer = Field(description="The single customer associated with this invoice")
     products: List[Product] = Field(description="A list of all products/inventory items found on this invoice")
+
+# 5. Root Extraction Schema (Supports grouping multiple invoices from one doc)
+class DocumentExtraction(BaseModel):
+    invoices: List[SingleInvoiceExtraction] = Field(description="A list containing all the individual aggregated invoices found in the document")
+
+# 6. Excel Header Mapping Schema
+class ExcelHeaderMapping(BaseModel):
+    customer_name: Optional[str] = Field(default=None, description="Exact Excel column name for the customer name")
+    phone_number: Optional[str] = Field(default=None, description="Exact Excel column name for the phone number")
+    invoice_date: Optional[str] = Field(default=None, description="Exact Excel column name for the invoice date")
+    total_amount: Optional[str] = Field(default=None, description="Exact Excel column name for the total amount")
+    quantity: Optional[str] = Field(default=None, description="Exact Excel column name for the quantity")
+    unit_price: Optional[str] = Field(default=None, description="Exact Excel column name for the unit price")
+    product_name: Optional[str] = Field(default=None, description="Exact Excel column name for the product name")
+    serial_number: Optional[str] = Field(default=None, description="Exact Excel column name for the serial number")
+    tax: Optional[str] = Field(default=None, description="Exact Excel column name for the tax percentage or amount")
