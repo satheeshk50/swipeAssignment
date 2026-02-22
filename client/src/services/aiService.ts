@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Invoice, Product, Customer, ExtractedData, CellWarning } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://swipeassignment-1.onrender.com';
 
 /**
  * Accepted file MIME types and extensions.
