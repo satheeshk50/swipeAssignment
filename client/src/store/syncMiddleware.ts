@@ -1,8 +1,8 @@
-import type { Middleware } from '@reduxjs/toolkit';
+
 import { updateInvoice, syncCustomerName } from './invoicesSlice';
 import { updateCustomer } from './customersSlice';
 import { updateProduct } from './productsSlice';
-import type { RootState } from './store';
+
 import type { Invoice, Product } from '../types';
 
 /**
