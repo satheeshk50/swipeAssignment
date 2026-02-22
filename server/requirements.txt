@@ -8,3 +8,5 @@ python-dotenv
 azure-core
 azure-ai-documentintelligence
 pandas
+numpy
+openpyxl
