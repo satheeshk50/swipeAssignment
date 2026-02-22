@@ -1,12 +1,16 @@
 import FileUpload from './components/FileUpload';
 import TabLayout from './components/TabLayout';
+import logo from './assets/swipe_logo.png';
 import './App.css';
 
 const App = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-header__title">Swipe Invoice Manager</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <img src={logo} alt="Swipe Logo" style={{ height: '40px' }} />
+          <h1 className="app-header__title" style={{ margin: 0 }}>Swipe Invoice Manager</h1>
+        </div>
         <p className="app-header__subtitle">
           Upload invoices, receipts & spreadsheets — AI extracts the data automatically
         </p>
