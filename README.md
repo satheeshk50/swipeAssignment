@@ -97,3 +97,13 @@ npm install
 npm run dev
 ```
 Navigate to `http://localhost:8084` to start using the extractor.
+For live link https://swipe-assignment-satheesh.vercel.app/
+
+some screen shots 
+<img width="1919" height="983" alt="Screenshot 2026-02-22 110345" src="https://github.com/user-attachments/assets/f239ecdb-c192-478c-8b03-448dd3cc2ad7" />
+<img width="1919" height="970" alt="Screenshot 2026-02-22 110406" src="https://github.com/user-attachments/assets/4e492506-e6c5-4db4-a511-c9fe7dda0644" />
+<img width="1919" height="973" alt="Screenshot 2026-02-22 110413" src="https://github.com/user-attachments/assets/b261ae80-a682-4c63-8281-eb075f80d21c" />
+<img width="1919" height="972" alt="Screenshot 2026-02-22 110429" src="https://github.com/user-attachments/assets/fd362925-e3d0-4d8a-9c6e-c903dc7fc0db" />
+<img width="1916" height="972" alt="Screenshot 2026-02-22 110454" src="https://github.com/user-attachments/assets/e30f4f74-607b-4bb4-8cd5-c1f12b69c2d9" />
+
+
